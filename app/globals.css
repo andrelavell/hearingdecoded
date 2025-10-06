@@ -17,7 +17,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-space-grotesk), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-noto-serif), Georgia, serif;
 }
 
 @layer utilities {
