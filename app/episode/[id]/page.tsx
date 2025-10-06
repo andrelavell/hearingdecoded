@@ -56,6 +56,12 @@ export default async function EpisodePage({ params }: { params: { id: string } }
       <div className="max-w-6xl mx-auto px-6 py-12">
         <EpisodePlayer episode={episode} transcripts={transcripts} />
 
+        {/* ShareThis BEGIN: Inline Share Buttons */}
+        <div className="mt-6">
+          <div className="sharethis-inline-share-buttons"></div>
+        </div>
+        {/* ShareThis END */}
+
         <div className="mt-8">
           <Comments episodeId={episode.id} />
         </div>

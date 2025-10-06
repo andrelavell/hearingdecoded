@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Serif } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
+import Script from "next/script";
 
 const notoSerif = Noto_Serif({ 
   subsets: ["latin"],
@@ -21,6 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${notoSerif.variable} antialiased bg-gray-50`}>
+        <Script
+          id="sharethis"
+          src="https://platform-api.sharethis.com/js/sharethis.js#property=68e456bc9ac1bf93b5eb1f57&product=sop"
+          strategy="beforeInteractive"
+        />
         <div className="min-h-screen flex flex-col">
           <main className="flex-1">
             {children}
