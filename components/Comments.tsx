@@ -105,7 +105,10 @@ export default function Comments({ episodeId }: CommentsProps) {
                   const displayName = (c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'
                   const initial = displayName.charAt(0).toUpperCase()
                   return (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold">
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-white font-semibold"
+                      style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-text-opacity, 1))' }}
+                    >
                       {initial}
                     </div>
                   )

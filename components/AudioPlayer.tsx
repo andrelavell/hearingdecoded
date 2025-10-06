@@ -205,7 +205,8 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
         <button
           onClick={togglePlay}
           disabled={isLoading}
-          className="flex items-center justify-center w-16 h-16 rounded-full transition shadow-lg disabled:opacity-30 disabled:cursor-not-allowed bg-[#F97316] hover:bg-[#ea580c]"
+          className="flex items-center justify-center w-16 h-16 rounded-full transition shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'rgb(17 24 39/var(--tw-text-opacity,1))' }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (

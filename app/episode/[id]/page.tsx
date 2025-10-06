@@ -53,16 +53,6 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
   return (
     <main className="min-h-screen bg-gray-100">
-      {/* Scientific accent line at top */}
-      <div 
-        className="h-2 w-full"
-        style={{
-          backgroundImage: 'url(/cyan_lines.png)',
-          backgroundRepeat: 'repeat-x',
-          backgroundSize: 'auto 100%',
-          backgroundPosition: 'center'
-        }}
-      />
       <div className="max-w-6xl mx-auto px-6 py-12">
         <EpisodePlayer episode={episode} transcripts={transcripts} />
 
