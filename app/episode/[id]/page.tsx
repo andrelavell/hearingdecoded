@@ -60,13 +60,18 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const canonical = new URL(`/episode/${episode.id}`, baseUrl).toString()
   const imageUrl = episode.image_url
+  const epNum = typeof (episode as any).episode_number === 'number'
+    ? String((episode as any).episode_number).padStart(3, '0')
+    : null
+  const host = episode.host?.trim()
+  const formattedTitle = `${epNum ? `Episode ${epNum}: ` : ''}${episode.title}${host ? ` (By ${host})` : ''}`
 
   return {
-    title: episode.title,
+    title: formattedTitle,
     description: episode.description,
     alternates: { canonical },
     openGraph: {
-      title: episode.title,
+      title: formattedTitle,
       description: episode.description,
       type: 'article',
       siteName: 'Hearing Decoded',
@@ -84,7 +89,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     },
     twitter: {
       card: 'summary_large_image',
-      title: episode.title,
+      title: formattedTitle,
       description: episode.description,
       images: imageUrl ? [imageUrl] : undefined,
     },
@@ -110,6 +115,10 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
   // Build full share URL for this episode for ShareThis buttons
   const shareUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/episode/${episode.id}`
+  const epNum = typeof (episode as any).episode_number === 'number'
+    ? String((episode as any).episode_number).padStart(3, '0')
+    : null
+  const shareTitle = `${epNum ? `Episode ${epNum}: ` : ''}${episode.title}${episode.host ? ` (By ${episode.host})` : ''}`
 
   return (
     <main className="min-h-screen bg-gray-100">
@@ -129,7 +138,7 @@ export default async function EpisodePage({ params }: { params: { id: string } }
           <div
             className="sharethis-inline-share-buttons"
             data-url={shareUrl}
-            data-title={episode.title}
+            data-title={shareTitle}
             data-description={episode.description || undefined}
             data-image={episode.image_url || undefined}
           ></div>
