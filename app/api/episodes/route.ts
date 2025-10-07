@@ -95,6 +95,34 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
+      // Fallback: if PostgREST schema cache doesn't see episode_number yet, retry without it
+      const msg = (dbError as any)?.message || ''
+      const code = (dbError as any)?.code
+      if (
+        (code === 'PGRST204' || msg.includes("episode_number")) &&
+        episode_number !== undefined
+      ) {
+        console.warn('Retrying insert without episode_number due to schema cache miss (PGRST204)')
+        const { data: episode2, error: dbError2 } = await supabase
+          .from('episodes')
+          .insert({
+            title,
+            description,
+            host,
+            category,
+            audio_url: audioUrl,
+            image_url: imageUrl,
+            duration,
+            references,
+          })
+          .select()
+          .single()
+
+        if (!dbError2) {
+          return NextResponse.json(episode2)
+        }
+      }
+
       console.error('Database error:', dbError)
       return NextResponse.json(
         { error: 'Failed to create episode record' },
@@ -154,12 +182,33 @@ export async function PUT(request: NextRequest) {
           episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
       }
 
-      const { data: episode, error } = await supabase
+      let { data: episode, error } = await supabase
         .from('episodes')
         .update(updateData)
         .eq('id', id)
         .select()
         .single()
+
+      if (error) {
+        const msg = (error as any)?.message || ''
+        const code = (error as any)?.code
+        if (
+          (code === 'PGRST204' || msg.includes("episode_number")) &&
+          typeof updateData.episode_number !== 'undefined'
+        ) {
+          console.warn('Retrying update without episode_number due to schema cache miss (PGRST204)')
+          const retryData = { ...updateData }
+          delete retryData.episode_number
+          const retry = await supabase
+            .from('episodes')
+            .update(retryData)
+            .eq('id', id)
+            .select()
+            .single()
+          episode = retry.data as any
+          error = retry.error as any
+        }
+      }
 
       if (error) {
         console.error('Database error:', error)
@@ -248,12 +297,33 @@ export async function PUT(request: NextRequest) {
       updateData.episode_number = episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
     }
 
-    const { data: episode, error } = await supabase
+    let { data: episode, error } = await supabase
       .from('episodes')
       .update(updateData)
       .eq('id', id)
       .select()
       .single()
+
+    if (error) {
+      const msg = (error as any)?.message || ''
+      const code = (error as any)?.code
+      if (
+        (code === 'PGRST204' || msg.includes("episode_number")) &&
+        typeof updateData.episode_number !== 'undefined'
+      ) {
+        console.warn('Retrying update without episode_number due to schema cache miss (PGRST204)')
+        const retryData = { ...updateData }
+        delete retryData.episode_number
+        const retry = await supabase
+          .from('episodes')
+          .update(retryData)
+          .eq('id', id)
+          .select()
+          .single()
+        episode = retry.data as any
+        error = retry.error as any
+      }
+    }
 
     if (error) {
       console.error('Database error:', error)
