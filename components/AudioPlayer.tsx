@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
-import WaveSurfer from 'wavesurfer.js'
+import type WaveSurferType from 'wavesurfer.js'
 
 interface AudioPlayerProps {
   audioUrl: string
@@ -16,7 +16,7 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
   const [duration, setDuration] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const waveformRef = useRef<HTMLDivElement>(null)
-  const waveSurferRef = useRef<WaveSurfer | null>(null)
+  const waveSurferRef = useRef<WaveSurferType | null>(null)
   const isDraggingRef = useRef(false)
 
   // Initialize WaveSurfer and bind events
@@ -29,117 +29,131 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
     // Destroy any existing instance first
     waveSurferRef.current?.destroy()
 
-    const ws = WaveSurfer.create({
-      container: waveformRef.current,
-      // Muted, clinical palette (slate)
-      waveColor: '#64748b', // slate-500
-      progressColor: '#0f172a', // slate-900
-      cursorColor: '#475569', // slate-600
-      cursorWidth: 1.5,
-      height: 80,
-      normalize: true,
-      fillParent: true,
-      interact: true,
-      // Bar-style waveform for a more instrument-like feel
-      barWidth: 2,
-      barGap: 1,
-      barRadius: 1,
-    })
+    let cancelled = false
+    let onReady: (() => void) | undefined
+    let onTime: ((t: number) => void) | undefined
+    let onPlay: (() => void) | undefined
+    let onPause: (() => void) | undefined
+    let onFinish: (() => void) | undefined
+    let onError: ((e: unknown) => void) | undefined
 
-    waveSurferRef.current = ws
-    ws.load(audioUrl)
+    let onPointerDown: ((e: PointerEvent) => void) | undefined
+    let onPointerMove: ((e: PointerEvent) => void) | undefined
+    let onPointerUp: ((e: PointerEvent) => void) | undefined
+    let seekFromEvent: ((e: PointerEvent) => void) | undefined
 
-    const onReady = () => {
-      const d = ws.getDuration() || 0
-      setDuration(d)
-      setIsLoading(false)
-    }
-
-    const onTime = (t: number) => {
-      setCurrentTime(t)
-      onTimeUpdate?.(t)
-    }
-
-    const onPlay = () => setIsPlaying(true)
-    const onPause = () => setIsPlaying(false)
-    const onFinish = () => {
-      setIsPlaying(false)
-      setCurrentTime(0)
-      try {
-        ws.setTime(0)
-      } catch (_) {
-        // no-op
-      }
-    }
-
-    const onError = (e: unknown) => {
-      console.error('WaveSurfer error:', e)
-      setIsLoading(false)
-    }
-
-    ws.on('ready', onReady)
-    ws.on('timeupdate', onTime)
-    ws.on('play', onPlay)
-    ws.on('pause', onPause)
-    ws.on('finish', onFinish)
-    ws.on('error', onError)
-
-    // Smooth, real-time scrubbing via pointer events
     const el = waveformRef.current
-    const onPointerDown = (e: PointerEvent) => {
-      if (!el) return
-      isDraggingRef.current = true
-      el.setPointerCapture?.(e.pointerId)
-      seekFromEvent(e)
-    }
-    const onPointerMove = (e: PointerEvent) => {
-      if (!isDraggingRef.current) return
-      seekFromEvent(e)
-    }
-    const onPointerUp = (e: PointerEvent) => {
-      isDraggingRef.current = false
-      el?.releasePointerCapture?.(e.pointerId)
-    }
-    const seekFromEvent = (e: PointerEvent) => {
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width)
-      const p = rect.width ? x / rect.width : 0
-      const dur = ws.getDuration() || 0
-      const t = p * dur
-      ws.setTime(t)
-      setCurrentTime(t)
-      onTimeUpdate?.(t)
+
+    const init = async () => {
+      const { default: WaveSurfer } = await import('wavesurfer.js')
+      if (cancelled || !el) return
+
+      const ws = WaveSurfer.create({
+        container: el,
+        // Muted, clinical palette (slate)
+        waveColor: '#64748b', // slate-500
+        progressColor: '#0f172a', // slate-900
+        cursorColor: '#475569', // slate-600
+        cursorWidth: 1.5,
+        height: 80,
+        fillParent: true,
+        interact: true,
+        // Bar-style waveform for a more instrument-like feel
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 1,
+      })
+
+      waveSurferRef.current = ws
+      ws.load(audioUrl)
+
+      onReady = () => {
+        const d = ws.getDuration() || 0
+        setDuration(d)
+        setIsLoading(false)
+      }
+
+      onTime = (t: number) => {
+        setCurrentTime(t)
+        onTimeUpdate?.(t)
+      }
+
+      onPlay = () => setIsPlaying(true)
+      onPause = () => setIsPlaying(false)
+      onFinish = () => {
+        setIsPlaying(false)
+        setCurrentTime(0)
+        try {
+          ws.setTime(0)
+        } catch {}
+      }
+      onError = (e: unknown) => {
+        console.error('WaveSurfer error:', e)
+        setIsLoading(false)
+      }
+
+      ws.on('ready', onReady)
+      ws.on('timeupdate', onTime)
+      ws.on('play', onPlay)
+      ws.on('pause', onPause)
+      ws.on('finish', onFinish)
+      ws.on('error', onError)
+
+      // Smooth, real-time scrubbing via pointer events
+      seekFromEvent = (e: PointerEvent) => {
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width)
+        const p = rect.width ? x / rect.width : 0
+        const dur = ws.getDuration() || 0
+        const t = p * dur
+        ws.setTime(t)
+        setCurrentTime(t)
+        onTimeUpdate?.(t)
+      }
+      onPointerDown = (e: PointerEvent) => {
+        if (!el) return
+        isDraggingRef.current = true
+        el.setPointerCapture?.(e.pointerId)
+        seekFromEvent?.(e)
+      }
+      onPointerMove = (e: PointerEvent) => {
+        if (!isDraggingRef.current) return
+        seekFromEvent?.(e)
+      }
+      onPointerUp = (e: PointerEvent) => {
+        isDraggingRef.current = false
+        el?.releasePointerCapture?.(e.pointerId)
+      }
+
+      el.addEventListener('pointerdown', onPointerDown)
+      window.addEventListener('pointermove', onPointerMove)
+      window.addEventListener('pointerup', onPointerUp)
     }
 
-    el?.addEventListener('pointerdown', onPointerDown)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
+    init()
 
     return () => {
+      cancelled = true
       // Remove pointer listeners first to stop interactions
-      el?.removeEventListener('pointerdown', onPointerDown)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
+      if (el && onPointerDown) el.removeEventListener('pointerdown', onPointerDown)
+      if (onPointerMove) window.removeEventListener('pointermove', onPointerMove)
+      if (onPointerUp) window.removeEventListener('pointerup', onPointerUp)
 
       // Safely unbind and destroy the current WaveSurfer instance
       const inst = waveSurferRef.current
       if (inst) {
         try {
-          inst.un('ready', onReady)
-          inst.un('timeupdate', onTime)
-          inst.un('play', onPlay)
-          inst.un('pause', onPause)
-          inst.un('finish', onFinish)
-          inst.un('error', onError)
-        } catch (_) {
-          // no-op
-        }
+          if (onReady) inst.un('ready', onReady)
+          if (onTime) inst.un('timeupdate', onTime)
+          if (onPlay) inst.un('play', onPlay)
+          if (onPause) inst.un('pause', onPause)
+          if (onFinish) inst.un('finish', onFinish)
+          if (onError) inst.un('error', onError)
+        } catch {}
         try {
           inst.destroy()
-        } catch (_) {
-          // already destroyed or not initialised
-        }
+        } catch {}
         waveSurferRef.current = null
       }
     }
@@ -212,17 +226,27 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
   return (
     <div>
       {/* Waveform */}
-      <div
-        ref={waveformRef}
-        className="w-full h-20 rounded-md mb-2 overflow-hidden"
-        style={{
-          touchAction: 'none',
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), ' +
-            'repeating-linear-gradient(to right, rgba(100,116,139,0.12) 0, rgba(100,116,139,0.12) 1px, transparent 1px, transparent 24px), ' +
-            'repeating-linear-gradient(to bottom, rgba(100,116,139,0.08) 0, rgba(100,116,139,0.08) 1px, transparent 1px, transparent 24px)'
-        }}
-      />
+      <div className="relative">
+        <div
+          ref={waveformRef}
+          className="w-full h-20 rounded-md mb-2 overflow-hidden"
+          style={{
+            touchAction: 'none',
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), ' +
+              'repeating-linear-gradient(to right, rgba(100,116,139,0.12) 0, rgba(100,116,139,0.12) 1px, transparent 1px, transparent 24px), ' +
+              'repeating-linear-gradient(to bottom, rgba(100,116,139,0.08) 0, rgba(100,116,139,0.08) 1px, transparent 1px, transparent 24px)'
+          }}
+        />
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <div className="flex items-center gap-2 text-gray-700">
+              <span className="inline-block h-4 w-4 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin" />
+              <span className="font-medium">Loading episode…</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Time Display */}
       <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
