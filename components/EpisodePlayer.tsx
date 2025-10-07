@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Episode } from '@/lib/supabase'
 import AudioPlayer from './AudioPlayer'
 
@@ -19,6 +19,36 @@ interface EpisodePlayerProps {
 
 export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerProps) {
   const [currentTime, setCurrentTime] = useState(0)
+
+  // Live listening count (simulated)
+  const MIN_LISTENERS = 581
+  const MAX_LISTENERS = 728
+
+  function hashCode(str: string) {
+    let h = 0
+    for (let i = 0; i < str.length; i++) {
+      h = (h << 5) - h + str.charCodeAt(i)
+      h |= 0
+    }
+    return Math.abs(h)
+  }
+
+  const initialCount = MIN_LISTENERS + (hashCode(episode.id) % (MAX_LISTENERS - MIN_LISTENERS + 1))
+  const [liveCount, setLiveCount] = useState<number>(initialCount)
+
+  useEffect(() => {
+    // Reset count when episode changes
+    setLiveCount(MIN_LISTENERS + (hashCode(episode.id) % (MAX_LISTENERS - MIN_LISTENERS + 1)))
+
+    let current = MIN_LISTENERS + (hashCode(episode.id) % (MAX_LISTENERS - MIN_LISTENERS + 1))
+    const interval = setInterval(() => {
+      const delta = Math.floor(Math.random() * 7) - 3 // -3..+3
+      current = Math.min(MAX_LISTENERS, Math.max(MIN_LISTENERS, current + delta))
+      setLiveCount(current)
+    }, 7000)
+
+    return () => clearInterval(interval)
+  }, [episode.id])
 
   const currentTranscript = transcripts.find(
     t => currentTime >= t.start_time && currentTime <= t.end_time
@@ -74,6 +104,11 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
                   {episode.category}
                 </span>
               )}
+              {/* Inline live listening count */}
+              <span className="ml-auto flex items-center gap-2 text-sm text-gray-700">
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
+                <span><span className="font-semibold text-gray-900">{liveCount}</span> listening</span>
+              </span>
             </div>
 
             <h1 className="text-4xl font-bold text-gray-900 mb-3 leading-tight">
