@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
 import type WaveSurferType from 'wavesurfer.js'
 
@@ -12,7 +12,12 @@ interface AudioPlayerProps {
   durationHint?: number
 }
 
-export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate, peaks, durationHint }: AudioPlayerProps) {
+export interface AudioPlayerRef {
+  togglePlay: () => void
+  isPlaying: boolean
+}
+
+const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(function AudioPlayer({ audioUrl, episodeId, onTimeUpdate, peaks, durationHint }, ref) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -187,6 +192,12 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate, peaks, 
     }
   }
 
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    togglePlay,
+    isPlaying
+  }), [isPlaying])
+
   const skipForward = () => {
     const ws = waveSurferRef.current
     if (!ws || isLoading) return
@@ -305,4 +316,6 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate, peaks, 
       </div>
     </div>
   )
-}
+})
+
+export default AudioPlayer

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Episode } from '@/lib/supabase'
-import AudioPlayer from './AudioPlayer'
+import AudioPlayer, { AudioPlayerRef } from './AudioPlayer'
+import { Play, Pause } from 'lucide-react'
 
 interface Transcript {
   id: string
@@ -19,6 +20,8 @@ interface EpisodePlayerProps {
 
 export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerProps) {
   const [currentTime, setCurrentTime] = useState(0)
+  const audioPlayerRef = useRef<AudioPlayerRef>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   // Live listening count (simulated)
   const MIN_LISTENERS = 581
@@ -100,13 +103,27 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
     return nodes
   }
 
+  // Sync isPlaying state with AudioPlayer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (audioPlayerRef.current) {
+        setIsPlaying(audioPlayerRef.current.isPlaying)
+      }
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleOverlayPlayPause = () => {
+    audioPlayerRef.current?.togglePlay()
+  }
+
   return (
     <div>
       {/* Episode Header */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
         <div className="flex flex-col md:flex-row md:min-h-[320px]">
           {/* Episode Image - No padding, fills height */}
-          <div className="flex-shrink-0 md:w-80">
+          <div className="flex-shrink-0 md:w-80 relative">
             {episode.image_url ? (
               <img 
                 src={episode.image_url} 
@@ -118,6 +135,21 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
                 <span className="text-white text-9xl">🎙️</span>
               </div>
             )}
+            
+            {/* Mobile-only play/pause overlay button */}
+            <button
+              onClick={handleOverlayPlayPause}
+              className="md:hidden absolute inset-0 flex items-center justify-center group"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              <div className="w-20 h-20 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center shadow-2xl transition-all group-hover:bg-black/70 group-active:scale-95">
+                {isPlaying ? (
+                  <Pause className="w-10 h-10 text-white" fill="white" />
+                ) : (
+                  <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                )}
+              </div>
+            </button>
           </div>
 
           {/* Episode Info - Padding only here */}
@@ -175,6 +207,7 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
             {/* Inline Audio Player */}
             <div className="mt-2">
               <AudioPlayer 
+                ref={audioPlayerRef}
                 audioUrl={episode.audio_url} 
                 episodeId={episode.id}
                 onTimeUpdate={setCurrentTime}

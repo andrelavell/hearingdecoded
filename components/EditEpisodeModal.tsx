@@ -464,7 +464,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
                 slugs.map((s) => (
                   <div key={s.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-700">/episode/{'{'}s.slug{'}'}</span>
+                      <span className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-700">/episode/{s.slug}</span>
                       <a
                         href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/episode/${s.slug}`}
                         target="_blank"
