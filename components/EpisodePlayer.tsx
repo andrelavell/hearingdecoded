@@ -165,6 +165,8 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
                 audioUrl={episode.audio_url} 
                 episodeId={episode.id}
                 onTimeUpdate={setCurrentTime}
+                peaks={episode.peaks ?? undefined}
+                durationHint={episode.duration}
               />
             </div>
           </div>

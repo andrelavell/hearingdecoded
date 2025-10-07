@@ -15,6 +15,8 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null)
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this episode?')) return
@@ -47,6 +49,78 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
     setEditingEpisode(null)
   }
 
+  // Compute downsampled peaks using Web Audio API from a URL
+  async function generatePeaksFromUrl(url: string, targetPeaks = 1200): Promise<{ peaks: number[]; duration: number }> {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('Failed to fetch audio')
+    const arrayBuffer = await res.arrayBuffer()
+    const AudioCtx: any = (window as any).AudioContext || (window as any).webkitAudioContext
+    const audioCtx = new AudioCtx()
+    const audioBuffer: AudioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0))
+    const duration = audioBuffer.duration
+    const channelData = audioBuffer.getChannelData(0)
+    const totalSamples = channelData.length
+    const samplesPerPeak = Math.max(1, Math.floor(totalSamples / targetPeaks))
+    const peaks: number[] = []
+    for (let i = 0; i < totalSamples; i += samplesPerPeak) {
+      let max = 0
+      const end = Math.min(i + samplesPerPeak, totalSamples)
+      for (let j = i; j < end; j++) {
+        const v = Math.abs(channelData[j])
+        if (v > max) max = v
+      }
+      peaks.push(max)
+    }
+    try { audioCtx.close() } catch {}
+    return { peaks, duration }
+  }
+
+  const backfillPeaks = async () => {
+    const targets = episodes.filter(ep => !ep.peaks || (Array.isArray(ep.peaks) && ep.peaks.length === 0))
+    if (targets.length === 0) {
+      setBackfillMsg('No episodes need backfilling.')
+      setTimeout(() => setBackfillMsg(null), 3000)
+      return
+    }
+    setBackfilling(true)
+    setBackfillMsg('Generating waveform...')
+    try {
+      for (const ep of targets) {
+        const { peaks, duration } = await generatePeaksFromUrl(ep.audio_url)
+        const res = await fetch('/api/episodes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: ep.id,
+            title: ep.title,
+            description: ep.description,
+            host: ep.host,
+            category: ep.category,
+            episode_number: (ep as any).episode_number ?? null,
+            references: (ep as any).references ?? null,
+            imageUrl: ep.image_url ?? null,
+            peaks,
+            duration,
+          }),
+        })
+        if (res.ok) {
+          const updated = await res.json()
+          setEpisodes(prev => prev.map(e => e.id === updated.id ? updated : e))
+        } else {
+          console.warn('Failed to update episode with peaks', await res.text())
+        }
+      }
+      setBackfillMsg('Waveform generated!')
+      setTimeout(() => setBackfillMsg(null), 3000)
+    } catch (e) {
+      console.error(e)
+      setBackfillMsg('Backfill failed')
+      setTimeout(() => setBackfillMsg(null), 4000)
+    } finally {
+      setBackfilling(false)
+    }
+  }
+
   return (
     <>
       <div className="mb-8 flex justify-between items-center">
@@ -62,6 +136,14 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
             View Site
           </Link>
           <button
+            onClick={backfillPeaks}
+            disabled={backfilling}
+            className="px-6 py-3 border border-amber-400 text-amber-700 rounded-lg hover:bg-amber-50 transition disabled:opacity-50"
+            title="Generate waveform peaks for episodes missing them"
+          >
+            {backfilling ? 'Generating…' : 'Generate Waveform'}
+          </button>
+          <button
             onClick={() => setShowUploadModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
@@ -70,6 +152,9 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
           </button>
         </div>
       </div>
+      {backfillMsg && (
+        <div className="mb-4 text-sm text-gray-700">{backfillMsg}</div>
+      )}
 
       {episodes.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center">

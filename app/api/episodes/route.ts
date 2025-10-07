@@ -156,6 +156,8 @@ export async function PUT(request: NextRequest) {
       const episodeNumberRaw = (body.episode_number ?? null) as string | number | null
       const references = (body.references ?? null) as string | null
       const imageUrl = (body.imageUrl ?? null) as string | null
+      const peaks = (body.peaks ?? undefined) as unknown
+      const duration = (body.duration ?? undefined) as number | undefined
 
       if (!id || !title || !host) {
         return NextResponse.json(
@@ -180,6 +182,14 @@ export async function PUT(request: NextRequest) {
       if (episodeNumberRaw !== null && episodeNumberRaw !== undefined) {
         updateData.episode_number =
           episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
+      }
+      // Optional peaks and duration updates
+      if (Array.isArray(peaks)) {
+        updateData.peaks = peaks
+      }
+
+      if (typeof duration === 'number' && isFinite(duration) && duration > 0) {
+        updateData.duration = Math.round(duration)
       }
 
       let { data: episode, error } = await supabase
@@ -232,6 +242,16 @@ export async function PUT(request: NextRequest) {
     const references = formData.get('references') as string | null
     const image = formData.get('image') as File | null
     const imageUrl = formData.get('imageUrl') as string | null
+    let peaks: unknown
+    let duration: number | undefined
+    try {
+      const peaksStr = formData.get('peaks') as string | null
+      if (peaksStr) peaks = JSON.parse(peaksStr)
+    } catch {}
+    try {
+      const d = formData.get('duration') as string | null
+      if (d) duration = Number(d)
+    } catch {}
 
     if (!id || !title || !host) {
       return NextResponse.json(
@@ -295,6 +315,14 @@ export async function PUT(request: NextRequest) {
     // Only update episode_number if provided in the form
     if (episodeNumberRaw !== null) {
       updateData.episode_number = episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
+    }
+    // Optional peaks and duration updates
+    if (Array.isArray(peaks)) {
+      updateData.peaks = peaks
+    }
+
+    if (typeof duration === 'number' && isFinite(duration) && duration > 0) {
+      updateData.duration = Math.round(duration)
     }
 
     let { data: episode, error } = await supabase

@@ -8,9 +8,11 @@ interface AudioPlayerProps {
   audioUrl: string
   episodeId: string
   onTimeUpdate?: (currentTime: number) => void
+  peaks?: number[]
+  durationHint?: number
 }
 
-export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: AudioPlayerProps) {
+export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate, peaks, durationHint }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -65,7 +67,18 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
       })
 
       waveSurferRef.current = ws
-      ws.load(audioUrl)
+      // If we have precomputed peaks and a known duration, load instantly
+      if (Array.isArray(peaks) && peaks.length > 0 && typeof durationHint === 'number' && durationHint > 0) {
+        try {
+          setDuration(durationHint)
+          // wavesurfer expects an array per channel; wrap mono peaks
+          ws.load(audioUrl, [peaks] as number[][], durationHint)
+        } catch {
+          ws.load(audioUrl)
+        }
+      } else {
+        ws.load(audioUrl)
+      }
 
       onReady = () => {
         const d = ws.getDuration() || 0
@@ -157,7 +170,7 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
         waveSurferRef.current = null
       }
     }
-  }, [audioUrl, onTimeUpdate])
+  }, [audioUrl, onTimeUpdate, peaks, durationHint])
 
   const togglePlay = async () => {
     const ws = waveSurferRef.current

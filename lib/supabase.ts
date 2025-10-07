@@ -16,6 +16,7 @@ export interface Episode {
   duration: number
   episode_number?: number | null
   references?: string | null
+  peaks?: number[] | null
   created_at: string
   updated_at: string
 }

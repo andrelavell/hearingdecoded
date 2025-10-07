@@ -12,6 +12,7 @@ interface UploadEpisodeModalProps {
 export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEpisodeModalProps) {
   const [uploading, setUploading] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const [processingWaveform, setProcessingWaveform] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,6 +30,33 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
       alert('Please select an audio file')
       return
     }
+
+  // Compute downsampled peaks using Web Audio API
+  async function generatePeaksFromFile(file: File, targetPeaks = 1200): Promise<{ peaks: number[]; duration: number }> {
+    const arrayBuffer = await file.arrayBuffer()
+    const AudioCtx: any = (window as any).AudioContext || (window as any).webkitAudioContext
+    const audioCtx = new AudioCtx()
+    // Some browsers require copying the buffer before decodeAudioData
+    const audioBuffer: AudioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0))
+    const duration = audioBuffer.duration
+    const channelData = audioBuffer.getChannelData(0)
+    const totalSamples = channelData.length
+    const samplesPerPeak = Math.max(1, Math.floor(totalSamples / targetPeaks))
+
+    const peaks: number[] = []
+    for (let i = 0; i < totalSamples; i += samplesPerPeak) {
+      let max = 0
+      const end = Math.min(i + samplesPerPeak, totalSamples)
+      for (let j = i; j < end; j++) {
+        const v = Math.abs(channelData[j])
+        if (v > max) max = v
+      }
+      peaks.push(max)
+    }
+
+    try { audioCtx.close() } catch {}
+    return { peaks, duration }
+  }
 
     setUploading(true)
 
@@ -57,7 +85,7 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
       }
 
       const newEpisode = await response.json()
-      
+
       // Start transcription in background
       setTranscribing(true)
       fetch('/api/transcribe', {
@@ -66,7 +94,42 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
         body: JSON.stringify({ episodeId: newEpisode.id, audioUrl: newEpisode.audio_url }),
       }).catch(err => console.error('Transcription error:', err))
 
-      onEpisodeAdded(newEpisode)
+      // Generate peaks client-side for instant waveform
+      try {
+        setProcessingWaveform(true)
+        const { peaks, duration } = await generatePeaksFromFile(audioFile)
+
+        // Persist peaks and duration to the episode
+        const putRes = await fetch('/api/episodes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newEpisode.id,
+            title: formData.title,
+            description: formData.description,
+            host: formData.host,
+            category: formData.category,
+            episode_number: formData.episode_number,
+            references: formData.references,
+            imageUrl: newEpisode.image_url ?? null,
+            peaks,
+            duration,
+          }),
+        })
+
+        if (putRes.ok) {
+          const updated = await putRes.json()
+          onEpisodeAdded(updated)
+        } else {
+          console.warn('Failed to update episode with peaks, proceeding without instant waveform')
+          onEpisodeAdded(newEpisode)
+        }
+      } catch (err) {
+        console.warn('Peaks generation failed:', err)
+        onEpisodeAdded(newEpisode)
+      } finally {
+        setProcessingWaveform(false)
+      }
     } catch (error) {
       console.error('Error uploading episode:', error)
       alert('Error uploading episode')
