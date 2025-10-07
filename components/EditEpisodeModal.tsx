@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Episode, Comment } from '@/lib/supabase'
+import { Episode, Comment, EpisodeSlug } from '@/lib/supabase'
 import { X, Loader, Upload, Image as ImageIcon, Plus, Trash2 } from 'lucide-react'
 
 interface EditEpisodeModalProps {
@@ -31,6 +31,12 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
   const [addingComment, setAddingComment] = useState(false)
   const [newComment, setNewComment] = useState({ name: '', content: '' })
 
+  // Slugs state
+  const [slugs, setSlugs] = useState<EpisodeSlug[]>([])
+  const [slugsLoading, setSlugsLoading] = useState(true)
+  const [addingSlug, setAddingSlug] = useState(false)
+  const [newSlug, setNewSlug] = useState('')
+
   const loadComments = async () => {
     try {
       setCommentsLoading(true)
@@ -47,6 +53,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
 
   useEffect(() => {
     loadComments()
+    loadSlugs()
   }, [episode.id])
 
   // Make URLs clickable in comment text (supports bare domains and trims trailing punctuation)
@@ -103,6 +110,21 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     if (url) {
       setImagePreview(url)
       setImageFile(null)
+    }
+  }
+
+  // Load slugs for this episode
+  const loadSlugs = async () => {
+    try {
+      setSlugsLoading(true)
+      const res = await fetch(`/api/slugs?episodeId=${encodeURIComponent(episode.id)}`)
+      if (!res.ok) throw new Error('Failed to load slugs')
+      const data = await res.json()
+      setSlugs(data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSlugsLoading(false)
     }
   }
 
@@ -371,6 +393,113 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
               disabled={updating}
             />
             <p className="text-xs text-gray-500 mt-1">Add URLs or text references, one per line</p>
+          </div>
+
+          {/* Custom Slugs */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-900">Custom Slugs</label>
+              <button
+                type="button"
+                onClick={loadSlugs}
+                className="text-sm text-blue-600 hover:underline"
+                disabled={slugsLoading}
+              >
+                Refresh
+              </button>
+            </div>
+
+            {/* Add slug */}
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newSlug}
+                onChange={(e) => setNewSlug(e.target.value)}
+                placeholder="e.g. hearing-aids-guide"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={addingSlug}
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const s = newSlug.trim()
+                  if (!s) return
+                  try {
+                    setAddingSlug(true)
+                    const res = await fetch('/api/slugs', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ episodeId: episode.id, slug: s }),
+                    })
+                    if (!res.ok) {
+                      let msg = 'Failed to add slug'
+                      try { const e = await res.json(); msg = e?.error || msg } catch {}
+                      throw new Error(msg)
+                    }
+                    const created = await res.json()
+                    setSlugs((prev) => [created, ...prev])
+                    setNewSlug('')
+                  } catch (e) {
+                    console.error(e)
+                    alert((e as Error).message || 'Error adding slug')
+                  } finally {
+                    setAddingSlug(false)
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                disabled={addingSlug}
+              >
+                <Plus className="w-4 h-4" /> Add
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">Slugs are normalized to lowercase, letters/numbers and dashes only.</p>
+
+            {/* Slugs list */}
+            <div className="space-y-2">
+              {slugsLoading ? (
+                <p className="text-gray-600">Loading slugs…</p>
+              ) : slugs.length === 0 ? (
+                <p className="text-gray-600">No custom slugs yet.</p>
+              ) : (
+                slugs.map((s) => (
+                  <div key={s.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-700">/episode/{'{'}s.slug{'}'}</span>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/episode/${s.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Open
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Delete slug "${s.slug}"?`)) return
+                        try {
+                          const res = await fetch('/api/slugs', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: s.id }),
+                          })
+                          if (!res.ok) throw new Error('Failed to delete slug')
+                          setSlugs((prev) => prev.filter((x) => x.id !== s.id))
+                        } catch (e) {
+                          console.error(e)
+                          alert('Error deleting slug')
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      aria-label="Delete slug"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Comments (Admin) */}

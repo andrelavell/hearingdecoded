@@ -36,3 +36,10 @@ export interface Comment {
   content: string
   created_at: string
 }
+
+export interface EpisodeSlug {
+  id: string
+  episode_id: string
+  slug: string
+  created_at: string
+}

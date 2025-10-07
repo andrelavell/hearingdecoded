@@ -2,6 +2,7 @@
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS transcripts CASCADE;
 DROP TABLE IF EXISTS episodes CASCADE;
+DROP TABLE IF EXISTS episode_slugs CASCADE;
 
 -- Create episodes table
 CREATE TABLE episodes (
@@ -38,16 +39,28 @@ CREATE TABLE comments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create episode_slugs table
+CREATE TABLE episode_slugs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  slug TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE (slug)
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_transcripts_episode_id ON transcripts(episode_id);
 CREATE INDEX idx_transcripts_time ON transcripts(episode_id, start_time);
 CREATE INDEX idx_comments_episode_id ON comments(episode_id);
+CREATE INDEX idx_episode_slugs_episode_id ON episode_slugs(episode_id);
+CREATE INDEX idx_episode_slugs_slug ON episode_slugs(slug);
 
 
 -- Enable Row Level Security
 ALTER TABLE episodes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transcripts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE episode_slugs ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read access
 CREATE POLICY "Public episodes are viewable by everyone" 
@@ -60,6 +73,10 @@ CREATE POLICY "Public transcripts are viewable by everyone"
 
 CREATE POLICY "Public comments are viewable by everyone" 
   ON comments FOR SELECT 
+  USING (true);
+
+CREATE POLICY "Public slugs are viewable by everyone" 
+  ON episode_slugs FOR SELECT 
   USING (true);
 
 -- Create policies for admin access (for now, allow all inserts/updates/deletes)
@@ -84,12 +101,20 @@ CREATE POLICY "Anyone can insert comments"
   ON comments FOR INSERT 
   WITH CHECK (true);
 
+CREATE POLICY "Anyone can insert slugs" 
+  ON episode_slugs FOR INSERT 
+  WITH CHECK (true);
+
 CREATE POLICY "Anyone can update comments" 
   ON comments FOR UPDATE 
   USING (true);
 
 CREATE POLICY "Anyone can delete comments" 
   ON comments FOR DELETE 
+  USING (true);
+
+CREATE POLICY "Anyone can delete slugs" 
+  ON episode_slugs FOR DELETE 
   USING (true);
 
 -- Create storage buckets

@@ -7,19 +7,45 @@ import type { Metadata } from 'next'
 import MetaPixel from '@/components/MetaPixel'
 import Script from 'next/script'
 
-async function getEpisode(id: string) {
-  const { data, error } = await supabase
+// Try to resolve an episode by direct id first; if not found, resolve by slug
+async function getEpisodeByIdOrSlug(idOrSlug: string): Promise<{ episode: Episode | null; resolvedId: string | null }> {
+  // Attempt by id
+  const byId = await supabase
     .from('episodes')
     .select('*')
-    .eq('id', id)
-    .single()
-  
-  if (error) {
-    console.error('Error fetching episode:', error)
-    return null
+    .eq('id', idOrSlug)
+    .maybeSingle()
+
+  if (byId.data) {
+    return { episode: byId.data as Episode, resolvedId: (byId.data as Episode).id }
   }
-  
-  return data as Episode
+
+  // If not found by id, try to resolve via slug lookup
+  const slugRes = await supabase
+    .from('episode_slugs')
+    .select('episode_id')
+    .eq('slug', idOrSlug)
+    .maybeSingle()
+
+  if (!slugRes.data || !slugRes.data.episode_id) {
+    if (byId.error) {
+      console.error('Error fetching episode by id:', byId.error)
+    }
+    return { episode: null, resolvedId: null }
+  }
+
+  const epRes = await supabase
+    .from('episodes')
+    .select('*')
+    .eq('id', slugRes.data.episode_id)
+    .single()
+
+  if (epRes.error) {
+    console.error('Error fetching episode by slug:', epRes.error)
+    return { episode: null, resolvedId: null }
+  }
+
+  return { episode: epRes.data as Episode, resolvedId: slugRes.data.episode_id as string }
 }
 
 async function getTranscripts(episodeId: string) {
@@ -38,7 +64,7 @@ async function getTranscripts(episodeId: string) {
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const episode = await getEpisode(params.id)
+  const { episode } = await getEpisodeByIdOrSlug(params.id)
   if (!episode) {
     return {
       title: 'Episode not found | Hearing Decoded',
@@ -97,8 +123,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function EpisodePage({ params }: { params: { id: string } }) {
-  const episode = await getEpisode(params.id)
-  const transcripts = await getTranscripts(params.id)
+  const { episode, resolvedId } = await getEpisodeByIdOrSlug(params.id)
+  const transcripts = episode ? await getTranscripts(episode.id) : []
 
   if (!episode) {
     return (
