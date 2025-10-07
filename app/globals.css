@@ -25,3 +25,61 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Futuristic splash helpers */
+.aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 60rem at 20% 10%, rgba(56, 189, 248, 0.18), transparent 60%),
+    radial-gradient(50rem 50rem at 80% 30%, rgba(99, 102, 241, 0.16), transparent 60%),
+    radial-gradient(40rem 40rem at 40% 80%, rgba(236, 72, 153, 0.12), transparent 60%);
+  filter: blur(40px) saturate(120%);
+  animation: aurora-shift 20s ease-in-out infinite alternate;
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+  background-size: 60px 60px, 60px 60px;
+  background-position: 0 0, 0 0;
+  mix-blend-mode: lighten;
+  opacity: 0.25;
+  animation: grid-pan 40s linear infinite;
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0) 96%, rgba(255,255,255,0.06) 100%);
+  background-size: 100% 3px;
+  opacity: 0.12;
+  animation: scan 8s linear infinite;
+}
+
+.text-glow {
+  filter:
+    drop-shadow(0 0 16px rgba(56,189,248,0.35))
+    drop-shadow(0 0 40px rgba(99,102,241,0.25));
+}
+
+@keyframes grid-pan {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 120px 120px, 120px 120px; }
+}
+
+@keyframes aurora-shift {
+  0% { background-position: 0% 0%, 100% 0%, 0% 100%; }
+  100% { background-position: 100% 100%, 0% 100%, 100% 0%; }
+}
+
+@keyframes scan {
+  0% { background-position-y: 0; }
+  100% { background-position-y: 3px; }
+}
