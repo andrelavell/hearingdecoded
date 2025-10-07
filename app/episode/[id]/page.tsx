@@ -3,6 +3,7 @@ import { Episode } from '@/lib/supabase'
 import EpisodePlayer from '@/components/EpisodePlayer'
 import Link from 'next/link'
 import Comments from '@/components/Comments'
+import type { Metadata } from 'next'
 
 async function getEpisode(id: string) {
   const { data, error } = await supabase
@@ -32,6 +33,59 @@ async function getTranscripts(episodeId: string) {
   }
   
   return data
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const episode = await getEpisode(params.id)
+  if (!episode) {
+    return {
+      title: 'Episode not found | Hearing Decoded',
+      description: 'This episode could not be found.',
+      openGraph: {
+        title: 'Episode not found | Hearing Decoded',
+        description: 'This episode could not be found.',
+        type: 'article',
+        siteName: 'Hearing Decoded',
+      },
+      twitter: {
+        card: 'summary',
+        title: 'Episode not found | Hearing Decoded',
+        description: 'This episode could not be found.',
+      },
+    }
+  }
+
+  const canonical = `/episode/${episode.id}`
+  const imageUrl = episode.image_url
+
+  return {
+    title: episode.title,
+    description: episode.description,
+    alternates: { canonical },
+    openGraph: {
+      title: episode.title,
+      description: episode.description,
+      type: 'article',
+      siteName: 'Hearing Decoded',
+      url: canonical,
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: episode.title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: episode.title,
+      description: episode.description,
+      images: imageUrl ? [imageUrl] : undefined,
+    },
+  }
 }
 
 export default async function EpisodePage({ params }: { params: { id: string } }) {

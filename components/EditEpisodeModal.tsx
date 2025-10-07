@@ -21,6 +21,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     description: episode.description || '',
     host: episode.host,
     category: episode.category || '',
+    episode_number: (episode.episode_number ?? '').toString(),
   })
 
   // Comments state
@@ -80,6 +81,8 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
       apiFormData.append('description', formData.description)
       apiFormData.append('host', formData.host)
       apiFormData.append('category', formData.category)
+      // include even if empty string to allow clearing the number
+      apiFormData.append('episode_number', formData.episode_number)
       
       if (imageFile) {
         apiFormData.append('image', imageFile)
@@ -254,6 +257,22 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={updating}
+            />
+          </div>
+
+          {/* Episode Number */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Episode Number (optional)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={formData.episode_number}
+              onChange={(e) => setFormData({ ...formData, episode_number: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="1"
               disabled={updating}
             />
           </div>

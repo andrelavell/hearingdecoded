@@ -100,23 +100,23 @@ export default function Comments({ episodeId }: CommentsProps) {
         <ul className="space-y-4">
           {comments.map((c) => (
             <li key={c.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                {(() => {
-                  const displayName = (c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'
-                  const initial = displayName.charAt(0).toUpperCase()
-                  return (
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-white font-semibold"
-                      style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-text-opacity, 1))' }}
-                    >
-                      {initial}
-                    </div>
-                  )
-                })()}
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{(c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'}</div>
-                  <p className="text-gray-700 whitespace-pre-wrap mt-1">{c.content}</p>
+              <div className="flex flex-wrap gap-3 sm:grid sm:grid-cols-[auto_1fr] sm:gap-4">
+                <div className="flex items-center gap-3 shrink-0 sm:contents">
+                  {(() => {
+                    const displayName = (c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'
+                    const initial = displayName.charAt(0).toUpperCase()
+                    return (
+                      <div
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-white font-semibold"
+                        style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-text-opacity, 1))' }}
+                      >
+                        {initial}
+                      </div>
+                    )
+                  })()}
+                  <div className="font-medium text-gray-900 sm:col-start-2 sm:self-center">{(c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'}</div>
                 </div>
+                <p className="text-gray-700 whitespace-pre-wrap mt-1 basis-full sm:col-start-2 sm:mt-0">{c.content}</p>
               </div>
             </li>
           ))}
@@ -157,7 +157,8 @@ export default function Comments({ episodeId }: CommentsProps) {
           <button
             type="submit"
             disabled={submitting || !content.trim()}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="inline-flex items-center rounded-md px-4 py-2 text-white hover:opacity-90 disabled:opacity-60"
+            style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-text-opacity, 1))' }}
           >
             {submitting ? 'Posting…' : 'Post Comment'}
           </button>

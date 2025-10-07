@@ -66,13 +66,20 @@ export default async function Home() {
                   {/* Episode Content - Padding only here */}
                   <div className="flex-1 p-6 md:p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-sm font-medium text-gray-900">Episode 01</span>
+                      {typeof episode.episode_number === 'number' && (
+                        <span className="text-sm font-medium text-gray-900">
+                          Episode {String(episode.episode_number).padStart(2, '0')}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2">
                         <img src="/microphone-icon.svg" alt="Host" className="w-4 h-4" />
                         <span className="text-sm text-gray-700 font-medium">{episode.host}</span>
                       </div>
                       {episode.category && (
-                        <span className="text-sm px-3 py-1 bg-gray-100 rounded-full font-medium">
+                        <span
+                          className="text-sm px-3 py-1 rounded-full font-medium text-white"
+                          style={{ backgroundColor: '#F97316' }}
+                        >
                           {episode.category}
                         </span>
                       )}

@@ -17,6 +17,7 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
     description: '',
     host: '',
     category: '',
+    episode_number: '',
   })
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -40,6 +41,9 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
       formDataToSend.append('description', formData.description)
       formDataToSend.append('host', formData.host)
       formDataToSend.append('category', formData.category)
+      if (formData.episode_number !== undefined) {
+        formDataToSend.append('episode_number', formData.episode_number)
+      }
 
       const response = await fetch('/api/episodes', {
         method: 'POST',
@@ -190,6 +194,22 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Motivation"
+              disabled={uploading}
+            />
+          </div>
+
+          {/* Episode Number */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Episode Number (optional)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={formData.episode_number}
+              onChange={(e) => setFormData({ ...formData, episode_number: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="1"
               disabled={uploading}
             />
           </div>

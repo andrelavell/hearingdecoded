@@ -14,6 +14,7 @@ export interface Episode {
   audio_url: string
   image_url: string
   duration: number
+  episode_number?: number | null
   created_at: string
   updated_at: string
 }

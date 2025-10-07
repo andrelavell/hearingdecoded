@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const description = formData.get('description') as string
     const host = formData.get('host') as string
     const category = formData.get('category') as string
+    const episodeNumberRaw = formData.get('episode_number') as string | null
 
     if (!audio || !title || !host) {
       return NextResponse.json(
@@ -71,6 +72,11 @@ export async function POST(request: NextRequest) {
     const duration = 0 // Will be set when audio loads in browser
 
     // Create episode record
+    // Coerce episode_number
+    const episode_number = episodeNumberRaw !== null && episodeNumberRaw !== ''
+      ? Number(episodeNumberRaw)
+      : null
+
     const { data: episode, error: dbError } = await supabase
       .from('episodes')
       .insert({
@@ -81,6 +87,7 @@ export async function POST(request: NextRequest) {
         audio_url: audioUrl,
         image_url: imageUrl,
         duration,
+        episode_number,
       })
       .select()
       .single()
@@ -113,6 +120,7 @@ export async function PUT(request: NextRequest) {
     const description = formData.get('description') as string
     const host = formData.get('host') as string
     const category = formData.get('category') as string
+    const episodeNumberRaw = formData.get('episode_number') as string | null
     const image = formData.get('image') as File | null
     const imageUrl = formData.get('imageUrl') as string | null
 
@@ -172,6 +180,11 @@ export async function PUT(request: NextRequest) {
 
     if (newImageUrl !== null) {
       updateData.image_url = newImageUrl
+    }
+
+    // Only update episode_number if provided in the form
+    if (episodeNumberRaw !== null) {
+      updateData.episode_number = episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
     }
 
     const { data: episode, error } = await supabase

@@ -13,6 +13,7 @@ CREATE TABLE episodes (
   audio_url TEXT NOT NULL,
   image_url TEXT,
   duration INTEGER NOT NULL DEFAULT 0,
+  episode_number INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
