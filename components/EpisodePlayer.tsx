@@ -122,31 +122,33 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
 
           {/* Episode Info - Padding only here */}
           <div className="flex-1 p-6 md:p-10 flex flex-col justify-center bg-white">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
+            <div className="mb-4">
               {episode.category && (
                 <span
-                  className="inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0"
+                  className="inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0 mb-2"
                   style={{ backgroundColor: '#F97316' }}
                 >
                   {episode.category}
                 </span>
               )}
 
-              {typeof episode.episode_number === 'number' && (
-                <span className="text-sm font-medium text-gray-900">
-                  Episode {String(episode.episode_number).padStart(3, '0')}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {typeof episode.episode_number === 'number' && (
+                  <span className="text-sm font-medium text-gray-900">
+                    Episode {String(episode.episode_number).padStart(3, '0')}
+                  </span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <img src="/microphone-icon.svg" alt="Host" className="w-4 h-4" />
+                  <span className="text-sm text-gray-900 font-medium">{episode.host}</span>
+                </div>
+
+                <span className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
+                  <span><span className="font-semibold text-gray-900">{liveCount}</span> listening</span>
                 </span>
-              )}
-
-              <div className="flex items-center gap-2">
-                <img src="/microphone-icon.svg" alt="Host" className="w-4 h-4" />
-                <span className="text-sm text-gray-900 font-medium">{episode.host}</span>
               </div>
-
-              <span className="sm:ml-auto flex items-center gap-2 text-sm text-gray-700">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
-                <span><span className="font-semibold text-gray-900">{liveCount}</span> listening</span>
-              </span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 leading-tight">
