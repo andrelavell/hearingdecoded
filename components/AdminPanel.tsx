@@ -197,7 +197,12 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
                         </div>
                       )}
                       <div>
-                        <div className="font-semibold text-gray-900">{episode.title}</div>
+                        <Link
+                          href={`/episode/${episode.id}`}
+                          className="font-semibold text-blue-600 hover:underline"
+                        >
+                          {episode.title}
+                        </Link>
                         {episode.description && (
                           <div className="text-sm text-gray-500 line-clamp-1">
                             {episode.description}
