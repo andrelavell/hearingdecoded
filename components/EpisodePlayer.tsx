@@ -64,6 +64,43 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
     return `${minutes} minute${minutes !== 1 ? 's' : ''}`
   }
 
+  // Make any embedded URLs within a reference line clickable and style them
+  const linkifyReference = (line: string) => {
+    const nodes: Array<string | JSX.Element> = []
+    const regex = /(https?:\/\/[^\s)]+)(\)?)/gi
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    let i = 0
+    while ((match = regex.exec(line)) !== null) {
+      const start = match.index
+      if (start > lastIndex) nodes.push(line.slice(lastIndex, start))
+      let url = match[1]
+      try {
+        if (url.startsWith('https://unitedhearing.org/top-hearing-aids/')) {
+          const u = new URL(url)
+          u.searchParams.set('utm_source', 'hearingdecoded')
+          url = u.toString()
+        }
+      } catch {}
+      nodes.push(
+        <a
+          key={`ref-link-${i++}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+          style={{ color: '#64748B' }}
+        >
+          {match[1]}
+        </a>
+      )
+      // Advance lastIndex past the matched URL and any trailing parenthesis captured
+      lastIndex = match.index + match[0].length
+    }
+    if (lastIndex < line.length) nodes.push(line.slice(lastIndex))
+    return nodes
+  }
+
   return (
     <div>
       {/* Episode Header */}
@@ -86,10 +123,10 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
 
           {/* Episode Info - Padding only here */}
           <div className="flex-1 p-6 md:p-10 flex flex-col justify-center bg-white">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
               {typeof episode.episode_number === 'number' && (
                 <span className="text-sm font-medium text-gray-900">
-                  Episode {String(episode.episode_number).padStart(2, '0')}
+                  Episode {String(episode.episode_number).padStart(3, '0')}
                 </span>
               )}
               <div className="flex items-center gap-2">
@@ -98,20 +135,20 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
               </div>
               {episode.category && (
                 <span
-                  className="text-sm px-3 py-1 rounded-full font-medium text-white"
+                  className="px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0"
                   style={{ backgroundColor: '#F97316' }}
                 >
                   {episode.category}
                 </span>
               )}
-              {/* Inline live listening count */}
-              <span className="ml-auto flex items-center gap-2 text-sm text-gray-700">
+              {/* Inline live listening count (wraps to its own row on mobile) */}
+              <span className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 text-sm text-gray-700 mt-1 sm:mt-0">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
                 <span><span className="font-semibold text-gray-900">{liveCount}</span> listening</span>
               </span>
             </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-3 leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-3 leading-tight">
               {episode.title}
             </h1>
 
@@ -143,36 +180,11 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
               .filter(ref => ref.trim())
               .map((reference, index) => {
                 const raw = reference.trim()
-                const isUrl = /^https?:\/\//i.test(raw)
                 // Strip any leading "1. ", "2. ", etc. from provided text to avoid double numbering
                 const text = raw.replace(/^\d+\.\s*/, '')
                 return (
                   <li key={index} className="whitespace-pre-wrap break-words">
-                    {isUrl ? (
-                      (() => {
-                        let href = raw
-                        try {
-                          if (raw.startsWith('https://unitedhearing.org/top-hearing-aids/')) {
-                            const u = new URL(raw)
-                            u.searchParams.set('utm_source', 'hearingdecoded')
-                            href = u.toString()
-                          }
-                        } catch {}
-                        return (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                            style={{ color: '#64748B' }}
-                          >
-                            {text}
-                          </a>
-                        )
-                      })()
-                    ) : (
-                      <span className="text-gray-600">{text}</span>
-                    )}
+                    <span className="text-gray-600">{linkifyReference(text)}</span>
                   </li>
                 )
               })}

@@ -68,7 +68,7 @@ export default async function Home() {
                     <div className="flex items-center gap-3 mb-3">
                       {typeof episode.episode_number === 'number' && (
                         <span className="text-sm font-medium text-gray-900">
-                          Episode {String(episode.episode_number).padStart(2, '0')}
+                          Episode {String(episode.episode_number).padStart(3, '0')}
                         </span>
                       )}
                       <div className="flex items-center gap-2">
