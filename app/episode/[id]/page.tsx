@@ -55,7 +55,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     }
   }
 
-  const canonical = `/episode/${episode.id}`
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const canonical = new URL(`/episode/${episode.id}`, baseUrl).toString()
   const imageUrl = episode.image_url
 
   return {
@@ -105,6 +106,9 @@ export default async function EpisodePage({ params }: { params: { id: string } }
     )
   }
 
+  // Build full share URL for this episode for ShareThis buttons
+  const shareUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/episode/${episode.id}`
+
   return (
     <main className="min-h-screen bg-gray-100">
       <div className="max-w-6xl mx-auto px-6 py-12">
@@ -112,7 +116,13 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
         {/* ShareThis BEGIN: Inline Share Buttons */}
         <div className="mt-6">
-          <div className="sharethis-inline-share-buttons"></div>
+          <div
+            className="sharethis-inline-share-buttons"
+            data-url={shareUrl}
+            data-title={episode.title}
+            data-description={episode.description || undefined}
+            data-image={episode.image_url || undefined}
+          ></div>
         </div>
         {/* ShareThis END */}
 
