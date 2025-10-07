@@ -14,7 +14,7 @@ CREATE TABLE episodes (
   image_url TEXT,
   duration INTEGER NOT NULL DEFAULT 0,
   episode_number INTEGER,
-  references TEXT,
+  "references" TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
