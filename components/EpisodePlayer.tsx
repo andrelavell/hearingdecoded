@@ -123,9 +123,10 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
           {/* Episode Info - Padding only here */}
           <div className="flex-1 p-6 md:p-10 flex flex-col justify-center bg-white">
             <div className="mb-4">
+              {/* Category pill - separate line on mobile, inline on desktop */}
               {episode.category && (
                 <span
-                  className="inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0 mb-2"
+                  className="inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0 mb-2 sm:mb-0 sm:hidden"
                   style={{ backgroundColor: '#F97316' }}
                 >
                   {episode.category}
@@ -133,6 +134,16 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
               )}
               
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {/* Category pill for desktop only */}
+                {episode.category && (
+                  <span
+                    className="hidden sm:inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-sm shrink-0"
+                    style={{ backgroundColor: '#F97316' }}
+                  >
+                    {episode.category}
+                  </span>
+                )}
+                
                 {typeof episode.episode_number === 'number' && (
                   <span className="text-sm font-medium text-gray-900">
                     Episode {String(episode.episode_number).padStart(3, '0')}
