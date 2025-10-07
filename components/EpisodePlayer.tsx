@@ -125,7 +125,7 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
               {episode.category && (
                 <span
-                  className="order-first w-full sm:order-none sm:w-auto inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0 mb-1 sm:mb-0"
+                  className="inline-flex justify-start px-3 py-1 rounded-full font-medium text-white text-xs sm:text-sm shrink-0"
                   style={{ backgroundColor: '#F97316' }}
                 >
                   {episode.category}
@@ -143,7 +143,7 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
                 <span className="text-sm text-gray-900 font-medium">{episode.host}</span>
               </div>
 
-              <span className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 text-sm text-gray-700 mt-1 sm:mt-0">
+              <span className="sm:ml-auto flex items-center gap-2 text-sm text-gray-700">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
                 <span><span className="font-semibold text-gray-900">{liveCount}</span> listening</span>
               </span>
