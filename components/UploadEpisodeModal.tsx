@@ -18,6 +18,7 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
     host: '',
     category: '',
     episode_number: '',
+    references: '',
   })
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -44,6 +45,7 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
       if (formData.episode_number !== undefined) {
         formDataToSend.append('episode_number', formData.episode_number)
       }
+      formDataToSend.append('references', formData.references)
 
       const response = await fetch('/api/episodes', {
         method: 'POST',
@@ -212,6 +214,22 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
               placeholder="1"
               disabled={uploading}
             />
+          </div>
+
+          {/* References */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              References
+            </label>
+            <textarea
+              value={formData.references}
+              onChange={(e) => setFormData({ ...formData, references: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={4}
+              placeholder="Add links or references, one per line"
+              disabled={uploading}
+            />
+            <p className="text-xs text-gray-500 mt-1">Add URLs or text references, one per line</p>
           </div>
 
           {/* Submit */}

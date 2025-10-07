@@ -22,6 +22,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     host: episode.host,
     category: episode.category || '',
     episode_number: (episode.episode_number ?? '').toString(),
+    references: episode.references || '',
   })
 
   // Comments state
@@ -83,6 +84,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
       apiFormData.append('category', formData.category)
       // include even if empty string to allow clearing the number
       apiFormData.append('episode_number', formData.episode_number)
+      apiFormData.append('references', formData.references)
       
       if (imageFile) {
         apiFormData.append('image', imageFile)
@@ -275,6 +277,22 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
               placeholder="1"
               disabled={updating}
             />
+          </div>
+
+          {/* References */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              References
+            </label>
+            <textarea
+              value={formData.references}
+              onChange={(e) => setFormData({ ...formData, references: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={4}
+              placeholder="Add links or references, one per line"
+              disabled={updating}
+            />
+            <p className="text-xs text-gray-500 mt-1">Add URLs or text references, one per line</p>
           </div>
 
           {/* Comments (Admin) */}

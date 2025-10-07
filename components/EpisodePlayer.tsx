@@ -98,6 +98,35 @@ export default function EpisodePlayer({ episode, transcripts }: EpisodePlayerPro
         </div>
       </div>
 
+      {/* References */}
+      {episode.references && (
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">References</h2>
+          <div className="space-y-2">
+            {episode.references.split('\n').filter(ref => ref.trim()).map((reference, index) => {
+              const isUrl = reference.trim().match(/^https?:\/\//i)
+              return (
+                <div key={index} className="flex items-start gap-3">
+                  <span className="text-orange-500 mt-1">•</span>
+                  {isUrl ? (
+                    <a 
+                      href={reference.trim()} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline break-all"
+                    >
+                      {reference.trim()}
+                    </a>
+                  ) : (
+                    <span className="text-gray-800">{reference.trim()}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Transcription */}
       {transcripts.length > 0 && (
         <div className="bg-white rounded-xl shadow-md p-6">

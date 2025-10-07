@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const host = formData.get('host') as string
     const category = formData.get('category') as string
     const episodeNumberRaw = formData.get('episode_number') as string | null
+    const references = formData.get('references') as string | null
 
     if (!audio || !title || !host) {
       return NextResponse.json(
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         image_url: imageUrl,
         duration,
         episode_number,
+        references,
       })
       .select()
       .single()
@@ -121,6 +123,7 @@ export async function PUT(request: NextRequest) {
     const host = formData.get('host') as string
     const category = formData.get('category') as string
     const episodeNumberRaw = formData.get('episode_number') as string | null
+    const references = formData.get('references') as string | null
     const image = formData.get('image') as File | null
     const imageUrl = formData.get('imageUrl') as string | null
 
@@ -175,6 +178,7 @@ export async function PUT(request: NextRequest) {
       description,
       host,
       category,
+      references,
       updated_at: new Date().toISOString(),
     }
 
