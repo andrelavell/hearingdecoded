@@ -76,20 +76,55 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     setUpdating(true)
 
     try {
+      // If not uploading a new file, use JSON payload (more reliable for PUT)
+      const changingImage = Boolean(imageFile)
+      if (!changingImage) {
+        const payload = {
+          id: episode.id,
+          title: formData.title,
+          description: formData.description,
+          host: formData.host,
+          category: formData.category,
+          episode_number: formData.episode_number, // send empty string to clear
+          references: formData.references,
+          // allow updating image via URL with JSON
+          imageUrl: useImageUrl && imageUrl ? imageUrl : undefined,
+        }
+
+        const response = await fetch('/api/episodes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+          let errMsg = 'Failed to update episode'
+          try {
+            const err = await response.json()
+            console.error('Update error details:', err)
+            errMsg = err?.error || err?.message || errMsg
+          } catch {}
+          throw new Error(errMsg)
+        }
+
+        const updatedEpisode = await response.json()
+        onEpisodeUpdated(updatedEpisode)
+        return
+      }
+
+      // Otherwise, use multipart for image upload or external URL update
       const apiFormData = new FormData()
       apiFormData.append('id', episode.id)
       apiFormData.append('title', formData.title)
       apiFormData.append('description', formData.description)
       apiFormData.append('host', formData.host)
       apiFormData.append('category', formData.category)
-      // include even if empty string to allow clearing the number
       apiFormData.append('episode_number', formData.episode_number)
       apiFormData.append('references', formData.references)
-      
+
       if (imageFile) {
         apiFormData.append('image', imageFile)
-      } else if (imageUrl) {
-        // Preserve existing or use new URL
+      } else if (useImageUrl && imageUrl) {
         apiFormData.append('imageUrl', imageUrl)
       }
 
@@ -99,7 +134,13 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update episode')
+        let errMsg = 'Failed to update episode'
+        try {
+          const err = await response.json()
+          console.error('Update error details:', err)
+          errMsg = err?.error || err?.message || errMsg
+        } catch {}
+        throw new Error(errMsg)
       }
 
       const updatedEpisode = await response.json()
@@ -107,6 +148,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     } catch (error) {
       console.error('Error updating episode:', error)
       alert('Error updating episode')
+    } finally {
       setUpdating(false)
     }
   }

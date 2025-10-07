@@ -115,6 +115,63 @@ export async function POST(request: NextRequest) {
 // PUT: Update episode
 export async function PUT(request: NextRequest) {
   try {
+    const contentType = request.headers.get('content-type') || ''
+
+    // Support both JSON and multipart form-data payloads
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const id = body.id as string
+      const title = body.title as string
+      const description = body.description as string
+      const host = body.host as string
+      const category = body.category as string
+      const episodeNumberRaw = (body.episode_number ?? null) as string | number | null
+      const references = (body.references ?? null) as string | null
+      const imageUrl = (body.imageUrl ?? null) as string | null
+
+      if (!id || !title || !host) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      const updateData: any = {
+        title,
+        description,
+        host,
+        category,
+        references,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (imageUrl) {
+        updateData.image_url = imageUrl
+      }
+
+      if (episodeNumberRaw !== null && episodeNumberRaw !== undefined) {
+        updateData.episode_number =
+          episodeNumberRaw === '' ? null : Number(episodeNumberRaw)
+      }
+
+      const { data: episode, error } = await supabase
+        .from('episodes')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Database error:', error)
+        return NextResponse.json(
+          { error: 'Failed to update episode', details: error },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(episode)
+    }
+
     const formData = await request.formData()
     
     const id = formData.get('id') as string
@@ -178,12 +235,8 @@ export async function PUT(request: NextRequest) {
       description,
       host,
       category,
+      references,
       updated_at: new Date().toISOString(),
-    }
-
-    // Handle references field (it's a reserved keyword, so handle carefully)
-    if (references !== null) {
-      updateData.references = references
     }
 
     if (newImageUrl !== null) {
@@ -205,7 +258,7 @@ export async function PUT(request: NextRequest) {
     if (error) {
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to update episode' },
+        { error: 'Failed to update episode', details: error },
         { status: 500 }
       )
     }
