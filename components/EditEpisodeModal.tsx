@@ -49,18 +49,23 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     loadComments()
   }, [episode.id])
 
-  // Make URLs clickable in comment text
+  // Make URLs clickable in comment text (supports bare domains and trims trailing punctuation)
   const linkify = (text: string) => {
     const nodes: Array<string | JSX.Element> = []
-    const regex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+    const regex = /\b((?:https?:\/\/|www\.)[^\s]+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^[\s]]*)?)/gi
     let lastIndex = 0
     let match: RegExpExecArray | null
     let i = 0
     while ((match = regex.exec(text)) !== null) {
       const start = match.index
       if (start > lastIndex) nodes.push(text.slice(lastIndex, start))
-      const url = match[0]
-      const href = url.startsWith('http') ? url : `https://${url}`
+      let raw = match[0]
+      let trailing = ''
+      while (/[.,!?;:)\]]$/.test(raw)) {
+        trailing = raw.slice(-1) + trailing
+        raw = raw.slice(0, -1)
+      }
+      const href = raw.startsWith('http') ? raw : `https://${raw}`
       nodes.push(
         <a
           key={`admin-link-${i++}`}
@@ -69,9 +74,10 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
           rel="noopener noreferrer"
           className="text-blue-600 underline break-words"
         >
-          {url}
+          {raw}
         </a>
       )
+      if (trailing) nodes.push(trailing)
       lastIndex = regex.lastIndex
     }
     if (lastIndex < text.length) nodes.push(text.slice(lastIndex))
