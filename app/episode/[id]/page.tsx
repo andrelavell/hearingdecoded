@@ -4,6 +4,7 @@ import EpisodePlayer from '@/components/EpisodePlayer'
 import Link from 'next/link'
 import Comments from '@/components/Comments'
 import type { Metadata } from 'next'
+import MetaPixel from '@/components/MetaPixel'
 
 async function getEpisode(id: string) {
   const { data, error } = await supabase
@@ -111,6 +112,8 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
   return (
     <main className="min-h-screen bg-gray-100">
+      {/* Meta Pixel PageView for episode pages */}
+      <MetaPixel />
       <div className="max-w-6xl mx-auto px-6 py-12">
         <EpisodePlayer episode={episode} transcripts={transcripts} />
 
