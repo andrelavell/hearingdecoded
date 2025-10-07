@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
+import WaveSurfer from 'wavesurfer.js'
 
 interface AudioPlayerProps {
   audioUrl: string
@@ -14,80 +15,144 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  const waveformRef = useRef<HTMLDivElement>(null)
+  const waveSurferRef = useRef<WaveSurfer | null>(null)
+  const isDraggingRef = useRef(false)
 
-  // Initialize audio and set up event listeners
+  // Initialize WaveSurfer and bind events
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
+    if (!waveformRef.current) return
+    setIsLoading(true)
+    setIsPlaying(false)
+    setCurrentTime(0)
 
-    const handleTimeUpdate = () => {
-      const time = audio.currentTime
-      setCurrentTime(time)
-      onTimeUpdate?.(time)
-    }
+    // Destroy any existing instance first
+    waveSurferRef.current?.destroy()
 
-    const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        setDuration(audio.duration)
-        setIsLoading(false)
-      }
-    }
+    const ws = WaveSurfer.create({
+      container: waveformRef.current,
+      // Muted, clinical palette (slate)
+      waveColor: '#64748b', // slate-500
+      progressColor: '#0f172a', // slate-900
+      cursorColor: '#475569', // slate-600
+      cursorWidth: 1.5,
+      height: 80,
+      normalize: true,
+      fillParent: true,
+      interact: true,
+      // Bar-style waveform for a more instrument-like feel
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 1,
+    })
 
-    const handleDurationChange = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        setDuration(audio.duration)
-        setIsLoading(false)
-      }
-    }
+    waveSurferRef.current = ws
+    ws.load(audioUrl)
 
-    const handleCanPlay = () => {
+    const onReady = () => {
+      const d = ws.getDuration() || 0
+      setDuration(d)
       setIsLoading(false)
     }
 
-    const handleEnded = () => {
+    const onTime = (t: number) => {
+      setCurrentTime(t)
+      onTimeUpdate?.(t)
+    }
+
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    const onFinish = () => {
       setIsPlaying(false)
-      audio.currentTime = 0
       setCurrentTime(0)
+      try {
+        ws.setTime(0)
+      } catch (_) {
+        // no-op
+      }
     }
 
-    const handleError = () => {
-      console.error('Audio loading error')
+    const onError = (e: unknown) => {
+      console.error('WaveSurfer error:', e)
       setIsLoading(false)
     }
 
-    // Add event listeners
-    audio.addEventListener('timeupdate', handleTimeUpdate)
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
-    audio.addEventListener('durationchange', handleDurationChange)
-    audio.addEventListener('canplay', handleCanPlay)
-    audio.addEventListener('ended', handleEnded)
-    audio.addEventListener('error', handleError)
+    ws.on('ready', onReady)
+    ws.on('timeupdate', onTime)
+    ws.on('play', onPlay)
+    ws.on('pause', onPause)
+    ws.on('finish', onFinish)
+    ws.on('error', onError)
 
-    // Load the audio
-    audio.load()
+    // Smooth, real-time scrubbing via pointer events
+    const el = waveformRef.current
+    const onPointerDown = (e: PointerEvent) => {
+      if (!el) return
+      isDraggingRef.current = true
+      el.setPointerCapture?.(e.pointerId)
+      seekFromEvent(e)
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current) return
+      seekFromEvent(e)
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      isDraggingRef.current = false
+      el?.releasePointerCapture?.(e.pointerId)
+    }
+    const seekFromEvent = (e: PointerEvent) => {
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width)
+      const p = rect.width ? x / rect.width : 0
+      const dur = ws.getDuration() || 0
+      const t = p * dur
+      ws.setTime(t)
+      setCurrentTime(t)
+      onTimeUpdate?.(t)
+    }
+
+    el?.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate)
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
-      audio.removeEventListener('durationchange', handleDurationChange)
-      audio.removeEventListener('canplay', handleCanPlay)
-      audio.removeEventListener('ended', handleEnded)
-      audio.removeEventListener('error', handleError)
+      // Remove pointer listeners first to stop interactions
+      el?.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+
+      // Safely unbind and destroy the current WaveSurfer instance
+      const inst = waveSurferRef.current
+      if (inst) {
+        try {
+          inst.un('ready', onReady)
+          inst.un('timeupdate', onTime)
+          inst.un('play', onPlay)
+          inst.un('pause', onPause)
+          inst.un('finish', onFinish)
+          inst.un('error', onError)
+        } catch (_) {
+          // no-op
+        }
+        try {
+          inst.destroy()
+        } catch (_) {
+          // already destroyed or not initialised
+        }
+        waveSurferRef.current = null
+      }
     }
   }, [audioUrl, onTimeUpdate])
 
   const togglePlay = async () => {
-    const audio = audioRef.current
-    if (!audio) return
-
+    const ws = waveSurferRef.current
+    if (!ws) return
     try {
       if (isPlaying) {
-        audio.pause()
-        setIsPlaying(false)
+        ws.pause()
       } else {
-        await audio.play()
-        setIsPlaying(true)
+        await ws.play()
       }
     } catch (error) {
       console.error('Playback error:', error)
@@ -95,32 +160,21 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
     }
   }
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current
-    if (!audio || isLoading) return
-
-    const newTime = parseFloat(e.target.value)
-    if (!isNaN(newTime)) {
-      audio.currentTime = newTime
+  const skipForward = () => {
+    const ws = waveSurferRef.current
+    if (!ws || isLoading) return
+    const newTime = Math.min((ws.getCurrentTime() || 0) + 30, ws.getDuration() || 0)
+    if (ws.getDuration()) {
+      ws.setTime(newTime)
       setCurrentTime(newTime)
     }
   }
 
-  const skipForward = () => {
-    const audio = audioRef.current
-    if (!audio || isLoading) return
-
-    const newTime = Math.min(audio.currentTime + 30, audio.duration || 0)
-    audio.currentTime = newTime
-    setCurrentTime(newTime)
-  }
-
   const skipBackward = () => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const newTime = Math.max(audio.currentTime - 30, 0)
-    audio.currentTime = newTime
+    const ws = waveSurferRef.current
+    if (!ws) return
+    const newTime = Math.max((ws.getCurrentTime() || 0) - 30, 0)
+    ws.setTime(newTime)
     setCurrentTime(newTime)
   }
 
@@ -155,34 +209,20 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
     return `${mins}m ${secs}s left`
   }
 
-  const getProgressPercentage = (): number => {
-    if (!duration || duration === 0) return 0
-    return (currentTime / duration) * 100
-  }
-
   return (
     <div>
-      <audio 
-        ref={audioRef} 
-        src={audioUrl} 
-        preload="metadata"
+      {/* Waveform */}
+      <div
+        ref={waveformRef}
+        className="w-full h-20 rounded-md mb-2 overflow-hidden"
+        style={{
+          touchAction: 'none',
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), ' +
+            'repeating-linear-gradient(to right, rgba(100,116,139,0.12) 0, rgba(100,116,139,0.12) 1px, transparent 1px, transparent 24px), ' +
+            'repeating-linear-gradient(to bottom, rgba(100,116,139,0.08) 0, rgba(100,116,139,0.08) 1px, transparent 1px, transparent 24px)'
+        }}
       />
-      
-      {/* Progress Bar */}
-      <div>
-        <input
-          type="range"
-          min="0"
-          max={duration || 0}
-          value={currentTime}
-          onChange={handleSeek}
-          disabled={isLoading}
-          className="w-full h-1 bg-gray-200 rounded-full appearance-none cursor-pointer slider"
-          style={{
-            background: `linear-gradient(to right, #f97316 ${getProgressPercentage()}%, #e5e7eb ${getProgressPercentage()}%)`
-          }}
-        />
-      </div>
 
       {/* Time Display */}
       <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
@@ -226,36 +266,6 @@ export default function AudioPlayer({ audioUrl, episodeId, onTimeUpdate }: Audio
           <span className="text-xs font-bold text-gray-700 relative z-10">30</span>
         </button>
       </div>
-
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          background: #f97316;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .slider::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          background: #f97316;
-          border-radius: 50%;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .slider:disabled::-webkit-slider-thumb {
-          cursor: not-allowed;
-        }
-        
-        .slider:disabled::-moz-range-thumb {
-          cursor: not-allowed;
-        }
-      `}</style>
     </div>
   )
 }
