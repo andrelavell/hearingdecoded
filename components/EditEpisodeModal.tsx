@@ -88,7 +88,8 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
       
       if (imageFile) {
         apiFormData.append('image', imageFile)
-      } else if (useImageUrl && imageUrl) {
+      } else if (imageUrl) {
+        // Preserve existing or use new URL
         apiFormData.append('imageUrl', imageUrl)
       }
 

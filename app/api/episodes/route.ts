@@ -178,8 +178,12 @@ export async function PUT(request: NextRequest) {
       description,
       host,
       category,
-      references,
       updated_at: new Date().toISOString(),
+    }
+
+    // Handle references field (it's a reserved keyword, so handle carefully)
+    if (references !== null) {
+      updateData.references = references
     }
 
     if (newImageUrl !== null) {
