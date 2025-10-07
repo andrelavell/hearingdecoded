@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Comments from '@/components/Comments'
 import type { Metadata } from 'next'
 import MetaPixel from '@/components/MetaPixel'
+import Script from 'next/script'
 
 async function getEpisode(id: string) {
   const { data, error } = await supabase
@@ -114,6 +115,12 @@ export default async function EpisodePage({ params }: { params: { id: string } }
     <main className="min-h-screen bg-gray-100">
       {/* Meta Pixel PageView for episode pages */}
       <MetaPixel />
+      {/* Load ShareThis only on episode pages to ensure correct URL */}
+      <Script
+        id={`sharethis-${episode.id}`}
+        src="https://platform-api.sharethis.com/js/sharethis.js#property=68e456bc9ac1bf93b5eb1f57&product=inline-share-buttons"
+        strategy="afterInteractive"
+      />
       <div className="max-w-6xl mx-auto px-6 py-12">
         <EpisodePlayer episode={episode} transcripts={transcripts} />
 

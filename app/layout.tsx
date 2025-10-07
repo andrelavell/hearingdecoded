@@ -24,11 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${notoSerif.variable} antialiased bg-gray-50`}>
-        <Script
-          id="sharethis"
-          src="https://platform-api.sharethis.com/js/sharethis.js#property=68e456bc9ac1bf93b5eb1f57&product=sop"
-          strategy="beforeInteractive"
-        />
+        {/* ShareThis moved to pages that need it (e.g., episode page) to avoid wrong URL on SPA navigation */}
         {/* Meta Pixel Base Code (init only; events fired per page) */}
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
