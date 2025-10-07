@@ -49,6 +49,35 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
     loadComments()
   }, [episode.id])
 
+  // Make URLs clickable in comment text
+  const linkify = (text: string) => {
+    const nodes: Array<string | JSX.Element> = []
+    const regex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    let i = 0
+    while ((match = regex.exec(text)) !== null) {
+      const start = match.index
+      if (start > lastIndex) nodes.push(text.slice(lastIndex, start))
+      const url = match[0]
+      const href = url.startsWith('http') ? url : `https://${url}`
+      nodes.push(
+        <a
+          key={`admin-link-${i++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline break-words"
+        >
+          {url}
+        </a>
+      )
+      lastIndex = regex.lastIndex
+    }
+    if (lastIndex < text.length) nodes.push(text.slice(lastIndex))
+    return nodes
+  }
+
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -419,7 +448,7 @@ export default function EditEpisodeModal({ episode, onClose, onEpisodeUpdated }:
                     <div>
                       <div className="text-sm text-gray-500">{new Date(c.created_at).toLocaleString()}</div>
                       <div className="font-medium text-gray-900">{c.name}</div>
-                      <div className="text-gray-800">{c.content}</div>
+                      <div className="text-gray-800 whitespace-pre-wrap break-words">{linkify(c.content)}</div>
                     </div>
                     <button
                       type="button"

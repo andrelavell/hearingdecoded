@@ -75,6 +75,35 @@ export default function Comments({ episodeId }: CommentsProps) {
 
   useEffect(() => { load() }, [episodeId])
 
+  // Convert URLs in plain text into clickable links
+  function linkify(text: string) {
+    const nodes: Array<string | JSX.Element> = []
+    const regex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    let i = 0
+    while ((match = regex.exec(text)) !== null) {
+      const start = match.index
+      if (start > lastIndex) nodes.push(text.slice(lastIndex, start))
+      const url = match[0]
+      const href = url.startsWith('http') ? url : `https://${url}`
+      nodes.push(
+        <a
+          key={`link-${i++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline break-words"
+        >
+          {url}
+        </a>
+      )
+      lastIndex = regex.lastIndex
+    }
+    if (lastIndex < text.length) nodes.push(text.slice(lastIndex))
+    return nodes
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-md p-6">
@@ -116,7 +145,7 @@ export default function Comments({ episodeId }: CommentsProps) {
                   })()}
                   <div className="font-medium text-gray-900 sm:col-start-2 sm:self-center">{(c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'}</div>
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap mt-1 basis-full sm:col-start-2 sm:mt-0">{c.content}</p>
+                <p className="text-gray-700 whitespace-pre-wrap break-words mt-1 basis-full sm:col-start-2 sm:mt-0">{linkify(c.content)}</p>
               </div>
             </li>
           ))}
