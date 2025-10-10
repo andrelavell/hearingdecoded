@@ -39,6 +39,12 @@ export default function Comments({ episodeId }: CommentsProps) {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // Inline edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState('')
+  const [updating, setUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !content.trim()) return
@@ -74,6 +80,48 @@ export default function Comments({ episodeId }: CommentsProps) {
   }
 
   useEffect(() => { load() }, [episodeId])
+
+  // Inline edit helpers
+  const startEdit = (c: Comment) => {
+    setEditingId(c.id)
+    setEditingContent(c.content)
+    setUpdateError(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditingContent('')
+    setUpdating(false)
+    setUpdateError(null)
+  }
+
+  const saveEdit = async () => {
+    if (!editingId || !editingContent.trim()) return
+    setUpdating(true)
+    setUpdateError(null)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, content: editingContent.trim() }),
+      })
+      if (!res.ok) {
+        let message = `Failed to update comment (HTTP ${res.status})`
+        try {
+          const body = await res.json()
+          if (body?.error) message = body.error
+        } catch {}
+        throw new Error(message)
+      }
+      const updated: Comment = await res.json()
+      setComments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+      cancelEdit()
+    } catch (e: any) {
+      setUpdateError(e.message || 'Failed to update comment')
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   // Convert URLs/domains in plain text into clickable links
   function linkify(text: string) {
@@ -155,7 +203,49 @@ export default function Comments({ episodeId }: CommentsProps) {
                   })()}
                   <div className="font-medium text-gray-900 sm:col-start-2 sm:self-center">{(c.name && c.name.trim()) ? c.name.trim() : 'Anonymous'}</div>
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap break-words mt-1 basis-full sm:col-start-2 sm:mt-0">{linkify(c.content)}</p>
+                {editingId === c.id ? (
+                  <div className="basis-full sm:col-start-2">
+                    <textarea
+                      value={editingContent}
+                      onChange={(e) => setEditingContent(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    {updateError && <p className="text-sm text-red-600 mt-2">{updateError}</p>}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={saveEdit}
+                        disabled={updating || !editingContent.trim()}
+                        className="inline-flex items-center rounded-md px-4 py-2 text-white hover:opacity-90 disabled:opacity-60"
+                        style={{ backgroundColor: 'rgb(17 24 39 / var(--tw-text-opacity, 1))' }}
+                      >
+                        {updating ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        disabled={updating}
+                        className="inline-flex items-center rounded-md px-3 py-2 text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-700 whitespace-pre-wrap break-words mt-1 basis-full sm:col-start-2 sm:mt-0">{linkify(c.content)}</p>
+                    <div className="basis-full sm:col-start-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(c)}
+                        className="text-sm text-gray-600 underline hover:text-gray-800"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </li>
           ))}

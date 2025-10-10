@@ -67,6 +67,43 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH: update a comment by id
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, content, name } = body || {}
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    }
+
+    const update: Record<string, string> = {}
+    if (typeof content === 'string' && content.trim()) update.content = content.trim()
+    if (typeof name === 'string' && name.trim()) update.name = name.trim()
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from('comments')
+      .update(update)
+      .eq('id', id)
+      .select('id, episode_id, name, content, created_at')
+      .single()
+
+    if (error) {
+      console.error('Error updating comment:', error)
+      return NextResponse.json({ error: error.message || 'Failed to update comment', details: error }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (err: any) {
+    console.error('PATCH /comments error:', err)
+    return NextResponse.json({ error: err?.message || 'Internal server error' }, { status: 500 })
+  }
+}
+
 // DELETE: delete a comment by id
 export async function DELETE(request: NextRequest) {
   try {
