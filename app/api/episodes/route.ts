@@ -9,9 +9,90 @@ const supabase = createClient(
 // POST: Create new episode
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get('content-type') || ''
+
+    // New path: accept JSON with pre-uploaded URLs (avoids large multipart bodies)
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const title = body.title as string
+      const description = (body.description ?? '') as string
+      const host = body.host as string
+      const category = (body.category ?? '') as string
+      const episodeNumberRaw = (body.episode_number ?? null) as string | number | null
+      const references = (body.references ?? null) as string | null
+      const audioUrl = body.audioUrl as string | undefined
+      const imageUrl = (body.imageUrl ?? null) as string | null
+
+      if (!audioUrl || !title || !host) {
+        return NextResponse.json(
+          { error: 'Missing required fields', details: { audioUrl: !!audioUrl, title: !!title, host: !!host } },
+          { status: 400 }
+        )
+      }
+
+      const duration = 0 // Client will update later
+      const episode_number = episodeNumberRaw !== null && episodeNumberRaw !== ''
+        ? Number(episodeNumberRaw)
+        : null
+
+      const { data: episode, error: dbError } = await supabase
+        .from('episodes')
+        .insert({
+          title,
+          description,
+          host,
+          category,
+          audio_url: audioUrl,
+          image_url: imageUrl,
+          duration,
+          episode_number,
+          references,
+        })
+        .select()
+        .single()
+
+      if (dbError) {
+        const msg = (dbError as any)?.message || ''
+        const code = (dbError as any)?.code
+        if (
+          (code === 'PGRST204' || msg.includes('episode_number')) &&
+          episode_number !== undefined
+        ) {
+          console.warn('Retrying insert without episode_number due to schema cache miss (PGRST204)')
+          const { data: episode2, error: dbError2 } = await supabase
+            .from('episodes')
+            .insert({
+              title,
+              description,
+              host,
+              category,
+              audio_url: audioUrl,
+              image_url: imageUrl,
+              duration,
+              references,
+            })
+            .select()
+            .single()
+
+          if (!dbError2) {
+            return NextResponse.json(episode2)
+          }
+        }
+
+        console.error('Database error:', dbError)
+        return NextResponse.json(
+          { error: 'Failed to create episode record' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(episode)
+    }
+
+    // Fallback: multipart form-data path (kept for small files/local dev)
     const formData = await request.formData()
-    
-    const audio = formData.get('audio') as File
+
+    const audio = formData.get('audio') as File | null
     const image = formData.get('image') as File | null
     const title = formData.get('title') as string
     const description = formData.get('description') as string
@@ -22,17 +103,17 @@ export async function POST(request: NextRequest) {
 
     if (!audio || !title || !host) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields', details: { audio: !!audio, title: !!title, host: !!host } },
         { status: 400 }
       )
     }
 
     // Upload audio file
     const audioFileName = `${Date.now()}-${audio.name}`
-    const { data: audioData, error: audioError } = await supabase.storage
+    const { error: audioError } = await supabase.storage
       .from('episodes')
       .upload(`audio/${audioFileName}`, audio, {
-        contentType: audio.type,
+        contentType: (audio as any).type,
         upsert: false,
       })
 
@@ -47,17 +128,17 @@ export async function POST(request: NextRequest) {
     const { data: audioUrlData } = supabase.storage
       .from('episodes')
       .getPublicUrl(`audio/${audioFileName}`)
-    
+
     const audioUrl = audioUrlData.publicUrl
 
     // Upload image if provided
-    let imageUrl = null
+    let imageUrl: string | null = null
     if (image) {
       const imageFileName = `${Date.now()}-${image.name}`
       const { error: imageError } = await supabase.storage
         .from('episodes')
         .upload(`images/${imageFileName}`, image, {
-          contentType: image.type,
+          contentType: (image as any).type,
           upsert: false,
         })
 
@@ -69,11 +150,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get audio duration using Audio API (rough estimate)
-    const duration = 0 // Will be set when audio loads in browser
+    const duration = 0 // Client will update later
 
-    // Create episode record
-    // Coerce episode_number
     const episode_number = episodeNumberRaw !== null && episodeNumberRaw !== ''
       ? Number(episodeNumberRaw)
       : null
@@ -95,11 +173,10 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      // Fallback: if PostgREST schema cache doesn't see episode_number yet, retry without it
       const msg = (dbError as any)?.message || ''
       const code = (dbError as any)?.code
       if (
-        (code === 'PGRST204' || msg.includes("episode_number")) &&
+        (code === 'PGRST204' || msg.includes('episode_number')) &&
         episode_number !== undefined
       ) {
         console.warn('Retrying insert without episode_number due to schema cache miss (PGRST204)')

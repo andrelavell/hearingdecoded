@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Episode } from '@/lib/supabase'
+import { supabase, Episode } from '@/lib/supabase'
 import { X, Upload, Loader } from 'lucide-react'
 
 interface UploadEpisodeModalProps {
@@ -61,26 +61,62 @@ export default function UploadEpisodeModal({ onClose, onEpisodeAdded }: UploadEp
     setUploading(true)
 
     try {
-      const formDataToSend = new FormData()
-      formDataToSend.append('audio', audioFile)
-      if (imageFile) {
-        formDataToSend.append('image', imageFile)
+      // 1) Upload audio directly to Supabase Storage
+      const audioFileName = `${Date.now()}-${audioFile.name}`
+      const { error: audioErr } = await supabase.storage
+        .from('episodes')
+        .upload(`audio/${audioFileName}`, audioFile, {
+          contentType: audioFile.type || 'audio/mpeg',
+          upsert: false,
+        })
+      if (audioErr) {
+        console.error('Audio upload failed:', audioErr)
+        throw new Error('Audio upload failed')
       }
-      formDataToSend.append('title', formData.title)
-      formDataToSend.append('description', formData.description)
-      formDataToSend.append('host', formData.host)
-      formDataToSend.append('category', formData.category)
-      if (formData.episode_number !== undefined) {
-        formDataToSend.append('episode_number', formData.episode_number)
-      }
-      formDataToSend.append('references', formData.references)
+      const { data: audioUrlData } = supabase.storage
+        .from('episodes')
+        .getPublicUrl(`audio/${audioFileName}`)
+      const audioUrl = audioUrlData.publicUrl
 
+      // 2) Optional image upload
+      let imageUrl: string | null = null
+      if (imageFile) {
+        const imageFileName = `${Date.now()}-${imageFile.name}`
+        const { error: imgErr } = await supabase.storage
+          .from('episodes')
+          .upload(`images/${imageFileName}`, imageFile, {
+            contentType: imageFile.type || 'image/*',
+            upsert: false,
+          })
+        if (!imgErr) {
+          const { data: imgUrlData } = supabase.storage
+            .from('episodes')
+            .getPublicUrl(`images/${imageFileName}`)
+          imageUrl = imgUrlData.publicUrl
+        } else {
+          console.warn('Image upload failed, proceeding without image:', imgErr)
+        }
+      }
+
+      // 3) Create episode via JSON POST (small payload)
       const response = await fetch('/api/episodes', {
         method: 'POST',
-        body: formDataToSend,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          host: formData.host,
+          category: formData.category,
+          episode_number: formData.episode_number,
+          references: formData.references,
+          audioUrl,
+          imageUrl,
+        }),
       })
 
       if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        console.error('Create episode failed:', text)
         throw new Error('Failed to upload episode')
       }
 
