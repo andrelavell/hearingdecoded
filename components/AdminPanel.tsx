@@ -135,6 +135,12 @@ export default function AdminPanel({ initialEpisodes }: AdminPanelProps) {
           >
             View Site
           </Link>
+          <Link
+            href="/admin/comments"
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+          >
+            Manage Comments
+          </Link>
           <button
             onClick={backfillPeaks}
             disabled={backfilling}

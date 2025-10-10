@@ -67,6 +67,52 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT: update a comment by id
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, name, content } = body as { id?: string; name?: string; content?: string }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    }
+
+    const updates: Record<string, string> = {}
+    if (typeof name === 'string') {
+      const finalName = name.trim()
+      if (finalName) updates.name = finalName
+    }
+    if (typeof content === 'string') {
+      const finalContent = content.trim()
+      if (!finalContent) {
+        return NextResponse.json({ error: 'Comment content cannot be empty' }, { status: 400 })
+      }
+      updates.content = finalContent
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from('comments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating comment:', error)
+      return NextResponse.json({ error: error.message || 'Failed to update comment', details: error }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (err: any) {
+    console.error('PUT /comments error:', err)
+    return NextResponse.json({ error: err?.message || 'Internal server error' }, { status: 500 })
+  }
+}
+
 // DELETE: delete a comment by id
 export async function DELETE(request: NextRequest) {
   try {
@@ -86,3 +132,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: err?.message || 'Internal server error' }, { status: 500 })
   }
 }
+
